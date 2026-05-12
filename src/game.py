@@ -80,16 +80,18 @@ class GameState:
     def _build_grid(self) -> list[list[str]]:
         grid = [["EMPTY"] * C.GRID_COLS for _ in range(C.GRID_ROWS)]
 
-        # Mark spawn zone columns
-        for row in range(C.GRID_ROWS):
-            for col in range(2):
-                grid[row][col] = "BUILDING"
-
         # Mark cells that overlap the path
         path_cells = self._cells_on_path()
         for col, row in path_cells:
             if 0 <= row < C.GRID_ROWS and 0 <= col < C.GRID_COLS:
                 grid[row][col] = "PATH"
+
+        # Mark spawn zone columns LAST so they override any path overlap —
+        # the leftmost two columns are reserved for enemy entry and must not
+        # accept tower placement.
+        for row in range(C.GRID_ROWS):
+            for col in range(2):
+                grid[row][col] = "BUILDING"
 
         # Mark castle, pond, shop footprints
         self._mark_building(grid, C.CASTLE_CX, C.CASTLE_CY, 100, 120)
@@ -438,20 +440,51 @@ class Game:
         return math.hypot(s.hero.x - s.pond.cx, s.hero.y - s.pond.cy) <= C.POND_INTERACT_RANGE
 
     def _handle_right_click(self, mx: int, my: int) -> None:
+        s = self.state
+
+        # ── Inventory overlay open: right-click on a slot sells the item ──
+        # Two-step sell flow: recall a tower from the map first (right-click
+        # on map below), then right-click it again in the bag to actually
+        # cash it out for 50% of its base cost.
+        if self.inv_overlay.visible:
+            slot = self.inv_overlay.hit_slot(mx, my)
+            if slot is not None:
+                slot_data = s.inventory.slots[slot]
+                if slot_data is not None:
+                    item_id = slot_data["item"]
+                    defn = C.ALL_DEFS.get(item_id, {})
+                    cost = int(defn.get("cost", 0))
+                    if cost > 0:
+                        refund = cost // 2
+                        if s.inventory.use_slot(slot) is not None:
+                            s.gold += refund
+                            self._show_message(
+                                f"{defn.get('name', item_id)} sold (+{refund}g)"
+                            )
+                            return
+                    self._show_message("Cannot sell this item here.")
+            # Modal: swallow the click whether or not it hit a slot.
+            return
+
         if mx >= C.GAME_WIDTH:
             return
-        s   = self.state
+
+        # ── Right-click on a placed tower: recall to bag (no gold) ──
         col = mx // C.CELL_SIZE
         row = my // C.CELL_SIZE
         for tower in list(s.towers):
             if tower.col == col and tower.row == row:
-                refund = tower.cost // 2
-                s.gold += refund
+                if not s.inventory.has_room_for(tower.tower_type):
+                    self._show_message("Inventory full — cannot recall!")
+                    return
+                s.inventory.add(tower.tower_type, 1)
                 s.towers.remove(tower)
                 s.grid[row][col] = "EMPTY"
                 if self.selected_tower is tower:
                     self.selected_tower = None
-                self._show_message(f"Tower sold (+{refund}g)")
+                self._show_message(
+                    f"{tower.name} returned to bag (right-click in bag to sell)"
+                )
                 return
 
         # No tower hit → begin charging Attack2.  The release (mouse-up)
@@ -668,9 +701,9 @@ class Game:
     ) -> bool:
         """Place a tower/defense from inventory slot onto the grid."""
         s = self.state
-        if s.phase != "DAY":
+        '''if s.phase != "DAY":
             self._show_message("Place during the day phase!")
-            return False
+            return False'''
         if not (0 <= col < C.GRID_COLS and 0 <= row < C.GRID_ROWS):
             self._show_message("Out of bounds!")
             return False
