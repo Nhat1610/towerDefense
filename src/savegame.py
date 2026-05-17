@@ -62,6 +62,10 @@ def state_to_dict(gs) -> dict:
             }
             for t in gs.towers
         ],
+        # Plants placed on the farm map.  Each entry carries the species,
+        # grid position, and elapsed growth time so a saved plant resumes
+        # at the same growth stage (or stays ripe) on the next load.
+        "farm": gs.farm.to_dict() if hasattr(gs, "farm") else {"plants": []},
     }
 
 

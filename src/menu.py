@@ -17,6 +17,9 @@ import pygame
 
 import config as C
 from src.savegame import SaveManager
+from src.settings import Settings
+from src.settings_overlay import SettingsOverlay
+from src.audio import music
 
 
 class _Button:
@@ -120,9 +123,11 @@ class MenuScreen:
         action = menu.run()   # → "new", "continue", or "quit"
     """
 
-    def __init__(self, screen: pygame.Surface) -> None:
+    def __init__(self, screen: pygame.Surface,
+                 settings: Settings | None = None) -> None:
         self.screen = screen
         self.clock  = pygame.time.Clock()
+        self.settings = settings if settings is not None else Settings.load()
 
         self._font_title    = pygame.font.SysFont("consolas", 64, bold=True)
         self._font_subtitle = pygame.font.SysFont("consolas", 20)
@@ -145,11 +150,18 @@ class MenuScreen:
             self._font_btn,
             enabled=SaveManager.exists(),
         )
-        self._btn_quit = _Button(
+        self._btn_settings = _Button(
             pygame.Rect(cx - btn_w // 2, cy + 140, btn_w, btn_h),
+            "SETTINGS",
+            self._font_btn,
+        )
+        self._btn_quit = _Button(
+            pygame.Rect(cx - btn_w // 2, cy + 200, btn_w, btn_h),
             "QUIT",
             self._font_btn,
         )
+
+        self._settings_overlay = SettingsOverlay(screen, self.settings)
 
         rng = random.Random(42)
         self._stars = [
@@ -167,6 +179,7 @@ class MenuScreen:
         while True:
             dt = self.clock.tick(C.FPS) / 1000.0
             self._anim_t += dt
+            music.update(dt)
 
             action = self._handle_events()
             if action:
@@ -180,6 +193,10 @@ class MenuScreen:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
+            # Settings overlay takes input priority while open
+            if self._settings_overlay.visible:
+                self._settings_overlay.handle_event(event)
+                continue
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
                     return "continue" if self._btn_continue.enabled else "new"
@@ -187,6 +204,9 @@ class MenuScreen:
                     return "new"
                 if event.key == pygame.K_c and self._btn_continue.enabled:
                     return "continue"
+                if event.key == pygame.K_s:
+                    self._settings_overlay.open()
+                    continue
                 if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
                     return "quit"
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -194,6 +214,9 @@ class MenuScreen:
                     return "new"
                 if self._btn_continue.contains(mouse):
                     return "continue"
+                if self._btn_settings.contains(mouse):
+                    self._settings_overlay.open()
+                    continue
                 if self._btn_quit.contains(mouse):
                     return "quit"
         return None
@@ -233,6 +256,7 @@ class MenuScreen:
         mouse = pygame.mouse.get_pos()
         self._btn_new.draw(s,      self._btn_new.contains(mouse))
         self._btn_continue.draw(s, self._btn_continue.contains(mouse))
+        self._btn_settings.draw(s, self._btn_settings.contains(mouse))
         self._btn_quit.draw(s,     self._btn_quit.contains(mouse))
 
         if not self._btn_continue.enabled:
@@ -243,9 +267,13 @@ class MenuScreen:
                           self._btn_continue.rect.bottom + 4))
 
         hint = self._font_hint.render(
-            "N = New  ·  C = Continue  ·  ESC = Quit", True, C.UI_DIM
+            "N = New  ·  C = Continue  ·  S = Settings  ·  ESC = Quit",
+            True, C.UI_DIM,
         )
         s.blit(hint, (cx - hint.get_width() // 2, C.SCREEN_HEIGHT - 32))
+
+        # Modal settings panel sits on top of everything else
+        self._settings_overlay.draw()
 
     def _draw_stars(self, surface: pygame.Surface) -> None:
         for x, y, r in self._stars:

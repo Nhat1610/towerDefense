@@ -285,12 +285,14 @@ class ShopMenu:
                 pygame.draw.circle(s, (160, 110, 40), (cx + ox, cy + oy), 2)
             return
 
-        # Plants — use the matured-stage sprite so the player can recognise
-        # what they're buying.  Falls back to a coloured square if the
-        # asset failed to load.
-        if item_id in C.PLANT_DEFS:
-            # Use the last available frame (matu re plant) — most distinctive
-            stages =Assets._plant_frames.get(item_id, [])
+        # Plants and suppliers — use the matured-stage sprite so the player
+        # can recognise what they're buying or selling.  A supplier item
+        # shows the sprite of the plant species that produced it (the icon
+        # IS the harvested crop).
+        if item_id in C.PLANT_DEFS or item_id in C.SUPPLIER_DEFS:
+            sprite_id = (item_id if item_id in C.PLANT_DEFS
+                         else C.SUPPLIER_TO_PLANT.get(item_id, ""))
+            stages = Assets._plant_frames.get(sprite_id, [])
             if stages:
                 sprite = stages[-1]
                 sw, sh = sprite.get_size()

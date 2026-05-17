@@ -194,16 +194,22 @@ class InventoryOverlay:
         inner   = rect.inflate(-12, -12)
         slot_px = min(inner.w, inner.h)
 
-        non_combat  = ("WALL", "FENCE", "SPIKE", "BARRICADE")
-        plant_kind  = item_id in C.PLANT_DEFS
+        non_combat    = ("WALL", "FENCE", "SPIKE", "BARRICADE")
+        plant_kind    = item_id in C.PLANT_DEFS
+        supplier_kind = item_id in C.SUPPLIER_DEFS
         sprite_kind = (item_id not in ("FISH_FOOD", "FISH_COMMON", "FISH_RARE")
                        and item_id not in non_combat
-                       and not plant_kind)
+                       and not plant_kind
+                       and not supplier_kind)
 
-        if plant_kind:
-            # Plant — show the matured (last) growth stage so the player can
-            # tell species apart at a glance.
-            stages = Assets._plant_frames.get(item_id, [])
+        if plant_kind or supplier_kind:
+            # Plant — matured (last) growth stage so the player can tell
+            # species apart at a glance.
+            # Supplier — same matured sprite, since a harvested supplier
+            # IS visually the ripe crop the player just picked.
+            sprite_id = (item_id if plant_kind
+                         else C.SUPPLIER_TO_PLANT.get(item_id, ""))
+            stages = Assets._plant_frames.get(sprite_id, [])
             if stages:
                 sprite = stages[-1]
                 sw, sh = sprite.get_size()

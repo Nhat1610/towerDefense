@@ -374,6 +374,14 @@ SUPPLIER_DEFS: dict[str, dict] = {
     "SUPPLIER_5": {"name": "Grand Crop", "sell_price": 550},
 }
 
+# Reverse lookup: SUPPLIER_X → PLANT_X.  Used by the inventory and shop
+# renderers to draw a harvested supplier with the matured plant sprite
+# (so the item icon visually matches the crop it came from) instead of a
+# generic coloured block.
+SUPPLIER_TO_PLANT: dict[str, str] = {
+    _pd["supplier"]: _pid for _pid, _pd in PLANT_DEFS.items()
+}
+
 PLANT_GROWTH_STAGES = 4   # number of frames in each plant sprite-sheet
 
 # ── Farm map layout ─────────────────────────────────────────────────────────
@@ -650,6 +658,15 @@ CASTLE_HP_UPGRADE_GROWTH    = 1.6   # cost multiplier per level
 SAVE_FILE             = "savegame.json"
 SAVE_MAX_SNAPSHOTS    = 6     # keep last N wave snapshots for rewind
 SAVE_REWIND_WAVES     = 5     # rewind this many waves on game-over continue
+
+# ── User settings (separate from savegame so "New Game" doesn't wipe them) ─
+SETTINGS_FILE         = "settings.json"
+DEFAULT_MUSIC_VOLUME  = 0.6              # 60 % on first launch
+
+# ── Background music ──────────────────────────────────────────────────────
+MUSIC_DAY_PATH        = "assets/Music/day.mp3"
+MUSIC_NIGHT_PATH      = "assets/Music/night.mp3"
+MUSIC_CROSSFADE_S     = 1.5              # day ↔ night crossfade duration
 
 # ── Hero (playable character) ──────────────────────────────────────────────
 HERO_HP_MAX       = 50

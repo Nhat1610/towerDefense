@@ -24,6 +24,9 @@ from src.shop_menu import ShopMenu
 from src.hero_upgrade_menu import HeroUpgradeMenu
 from src.fishing import FishingMinigame
 from src.farm import FarmState
+from src.settings import Settings
+from src.settings_overlay import SettingsOverlay
+from src.audio import music
 import random
 
 
@@ -152,9 +155,11 @@ class Game:
     """Main game object.  Call game.run() to start the loop."""
 
     def __init__(self, screen: pygame.Surface,
-                 load_state: dict | None = None) -> None:
+                 load_state: dict | None = None,
+                 settings: Settings | None = None) -> None:
         self.screen = screen
         self.clock  = pygame.time.Clock()
+        self.settings = settings if settings is not None else Settings.load()
 
         self.state    = GameState()
         self.renderer = MapRenderer(screen)
@@ -163,6 +168,20 @@ class Game:
         self.shop_menu   = ShopMenu(screen)
         self.hero_upgrade_menu = HeroUpgradeMenu(screen)
         self.fishing    = FishingMinigame()
+        self.settings_overlay = SettingsOverlay(screen, self.settings)
+
+        # Click rects for the buttons drawn inside the pause overlay.
+        # Computed once because the overlay layout is screen-centered.
+        self._pause_settings_rect: pygame.Rect = pygame.Rect(
+            C.SCREEN_WIDTH // 2 - 120,
+            C.SCREEN_HEIGHT // 2 + 80,
+            240, 44,
+        )
+        self._pause_save_quit_rect: pygame.Rect = pygame.Rect(
+            C.SCREEN_WIDTH // 2 - 120,
+            C.SCREEN_HEIGHT // 2 + 136,
+            240, 44,
+        )
 
         self.selected_type: str = "BALLISTA"   # last-bought item — UI highlight only
         self.selected_tower: Tower | None = None
@@ -196,6 +215,12 @@ class Game:
             if not self.state.paused:
                 self._update(dt)
 
+            # Music keeps playing while paused — drive phase + crossfade
+            # outside the pause gate so the crossfade animation doesn't
+            # desync from the actual audio output.
+            music.set_phase(self.state.phase)
+            music.update(dt)
+
             self._draw()
             pygame.display.flip()
 
@@ -208,8 +233,27 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+                continue
 
-            elif event.type == pygame.KEYDOWN:
+            # Settings overlay (when visible) takes input priority.
+            if self.settings_overlay.visible:
+                self.settings_overlay.handle_event(event)
+                continue
+
+            # When paused, intercept clicks on the SETTINGS and SAVE-AND-QUIT
+            # pause buttons.  Everything else falls through to normal
+            # handling so ESC can still un-pause via _handle_key.
+            if (state.paused
+                    and event.type == pygame.MOUSEBUTTONDOWN
+                    and event.button == 1):
+                if self._pause_settings_rect.collidepoint(event.pos):
+                    self.settings_overlay.open()
+                    continue
+                if self._pause_save_quit_rect.collidepoint(event.pos):
+                    self._save_and_quit_to_menu()
+                    continue
+
+            if event.type == pygame.KEYDOWN:
                 self._handle_key(event.key)
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -972,6 +1016,13 @@ class Game:
         """Write the current state + snapshot ring buffer to disk."""
         SaveManager.write(self._take_snapshot(), self.state.snapshots)
 
+    def _save_and_quit_to_menu(self) -> None:
+        """Persist the current game then exit the game loop back to the
+        main menu (main.py reopens MenuScreen when run() returns)."""
+        self._persist()
+        self.state.paused = False
+        self.running = False
+
     def _restore_state(self, data: dict) -> None:
         """Apply a save dict to the freshly-built GameState."""
         s = self.state
@@ -1013,6 +1064,11 @@ class Game:
         inv_d = cur.get("inventory")
         if isinstance(inv_d, dict):
             s.inventory = Inventory.from_dict(inv_d)
+
+        # Farm — plants placed on the farm map with their growth timers
+        farm_d = cur.get("farm")
+        if isinstance(farm_d, dict):
+            s.farm = FarmState.from_dict(farm_d)
 
         # Rebuild towers
         for t in list(s.towers):
@@ -1562,6 +1618,10 @@ class Game:
         if s.paused:
             self._draw_pause_overlay()
 
+        # The settings panel is modal — drawn last so it sits above the
+        # pause overlay (when opened from pause) and any other UI.
+        self.settings_overlay.draw()
+
     def _draw_pause_overlay(self) -> None:
         s    = self.screen
         surf = pygame.Surface((C.SCREEN_WIDTH, C.SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -1572,11 +1632,36 @@ class Game:
         lbl = self._font_big.render("PAUSED", True, C.UI_GOLD)
         s.blit(lbl, (C.SCREEN_WIDTH // 2 - lbl.get_width() // 2,
                      C.SCREEN_HEIGHT // 2 - lbl.get_height() // 2))
+
+        mouse = pygame.mouse.get_pos()
+        btn_font = pygame.font.SysFont("consolas", 22, bold=True)
+
+        # SETTINGS button — opens the volume panel
+        self._draw_pause_button(self._pause_settings_rect, "SETTINGS",
+                                btn_font, mouse)
+        # SAVE AND QUIT — persists then returns to main menu
+        self._draw_pause_button(self._pause_save_quit_rect,
+                                "SAVE AND QUIT", btn_font, mouse)
+
         hint = pygame.font.SysFont("consolas", 20).render(
             "Press ESC to resume", True, C.UI_TEXT
         )
         s.blit(hint, (C.SCREEN_WIDTH // 2 - hint.get_width() // 2,
-                      C.SCREEN_HEIGHT // 2 + 40))
+                      self._pause_save_quit_rect.bottom + 16))
+
+    def _draw_pause_button(self, rect: pygame.Rect, label: str,
+                           font: pygame.font.Font,
+                           mouse: tuple[int, int]) -> None:
+        s = self.screen
+        hovered = rect.collidepoint(mouse)
+        bg     = C.UI_SELECTED if hovered else C.UI_PANEL
+        border = C.UI_GOLD     if hovered else C.UI_BORDER
+        text   = C.UI_GOLD     if hovered else C.UI_TEXT
+        pygame.draw.rect(s, bg,     rect, border_radius=6)
+        pygame.draw.rect(s, border, rect, 2, border_radius=6)
+        lbl = font.render(label, True, text)
+        s.blit(lbl, (rect.centerx - lbl.get_width() // 2,
+                     rect.centery - lbl.get_height() // 2))
 
     # ══════════════════════════════════════════════════════════════════════
     # Helpers
