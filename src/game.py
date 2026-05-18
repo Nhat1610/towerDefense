@@ -677,17 +677,33 @@ class Game:
         defn = C.ITEM_DEFS.get(item_id, {})
         target_kind = defn.get("drag_target")
 
-        # Drop onto the shop's SELL slot — works only for sellable items
-        # (fish products) and only while the shop menu is open.
+        # Drop onto the shop's SELL slot — works only for sellable items.
+        # Suppliers and fish (COMMON / RARE) bulk-transfer the WHOLE stack
+        # from the dragged slot in one drop; other sellable items still
+        # move one at a time.
         if self.shop_menu.visible and self.shop_menu.hit_sell_slot(mx, my):
             sell_price = C.ITEM_DEFS.get(item_id, {}).get("sell_price", 0)
-            if sell_price > 0 and s.inventory.use_slot(src) is not None:
-                self.shop_menu.stash_for_sell(item_id, 1)
-                self._show_message(
-                    f"Queued 1 {C.ITEM_DEFS[item_id]['name']} for sale"
-                )
-            else:
+            slot_data = (s.inventory.slots[src]
+                         if 0 <= src < s.inventory.size else None)
+            if (sell_price <= 0 or slot_data is None
+                    or slot_data["item"] != item_id):
                 self._show_message("Not sellable here.")
+                self._cancel_drag()
+                return
+
+            bulk = (item_id in C.SUPPLIER_DEFS
+                    or item_id in ("FISH_COMMON", "FISH_RARE"))
+            qty = int(slot_data["count"]) if bulk else 1
+
+            if bulk:
+                # Empty the whole slot in one go — avoids N calls to use_slot
+                s.inventory.slots[src] = None
+            else:
+                s.inventory.use_slot(src)
+
+            self.shop_menu.stash_for_sell(item_id, qty)
+            name = C.ITEM_DEFS[item_id]["name"]
+            self._show_message(f"Queued {qty} {name} for sale")
             self._cancel_drag()
             return
 
@@ -1243,6 +1259,9 @@ class Game:
         # Hero always updates (day and night)
         keys = pygame.key.get_pressed()
         s.hero.update(dt, keys)
+        # Castle ticks its combat-cooldown timer so Hero.healing() can
+        # consult castle._last_hit_t against HERO_HEAL_COMBAT_WINDOW.
+        s.castle.tick(dt)
 
         # Map portal — walking into the door behind the castle warps to farm
         # and vice-versa.  Single-shot: snap hero to the matching portal on

@@ -285,26 +285,33 @@ class ShopMenu:
                 pygame.draw.circle(s, (160, 110, 40), (cx + ox, cy + oy), 2)
             return
 
-        # Plants and suppliers — use the matured-stage sprite so the player
-        # can recognise what they're buying or selling.  A supplier item
-        # shows the sprite of the plant species that produced it (the icon
-        # IS the harvested crop).
+        # Plants and suppliers — use the dedicated sprite so the player can
+        # recognise what they're buying or selling.
+        # Plants:    matured (last) growth stage from Farm/Plants/.
+        # Suppliers: harvested-product icon from Farm/Supplier/, with a
+        #            fallback to the matured plant sprite if the supplier
+        #            asset failed to load.
         if item_id in C.PLANT_DEFS or item_id in C.SUPPLIER_DEFS:
-            sprite_id = (item_id if item_id in C.PLANT_DEFS
-                         else C.SUPPLIER_TO_PLANT.get(item_id, ""))
-            stages = Assets._plant_frames.get(sprite_id, [])
-            if stages:
-                sprite = stages[-1]
+            sprite = None
+            if item_id in C.SUPPLIER_DEFS:
+                sprite = Assets._supplier_sprite.get(item_id)
+                if sprite is None:
+                    stages = Assets._plant_frames.get(
+                        C.SUPPLIER_TO_PLANT.get(item_id, ""), [])
+                    sprite = stages[-1] if stages else None
+            else:
+                stages = Assets._plant_frames.get(item_id, [])
+                sprite = stages[-1] if stages else None
+
+            if sprite is not None:
                 sw, sh = sprite.get_size()
                 # Scale down to fit a ~28×28 icon slot, preserving aspect
                 max_dim = 28
                 scale = min(max_dim / max(1, sw), max_dim / max(1, sh), 1.0)
                 tw = max(1, int(sw * scale))
                 th = max(1, int(sh * scale))
-                if (tw, th) != (sw, sh):
-                    icon = pygame.transform.scale(sprite, (tw, th))
-                else:
-                    icon = sprite
+                icon = (pygame.transform.scale(sprite, (tw, th))
+                        if (tw, th) != (sw, sh) else sprite)
                 s.blit(icon, (cx - tw // 2, cy - th // 2))
                 return
 

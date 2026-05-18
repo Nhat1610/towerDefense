@@ -1,39 +1,4 @@
-"""
-algorithms/astar.py
-===================
-AStarPathfinder — grid-based A* pathfinding for enemy navigation.
 
-IT003 ASSIGNMENT: Implement every method marked with
-    raise NotImplementedError(...)
-
-Grid system
------------
-The game world is divided into GRID_COLS × GRID_ROWS cells.
-Each cell is CELL_SIZE × CELL_SIZE pixels.
-
-Cell types (stored in GameState.grid[row][col]):
-    "EMPTY"    — traversable, no tower
-    "PATH"     — pre-marked path cells (always traversable by enemies)
-    "TOWER"    — blocked by a placed tower
-    "BUILDING" — blocked by castle / pond / shop
-
-Coordinate conversions (provided as static helpers):
-    pixel  → cell:  (px // CELL_SIZE, py // CELL_SIZE) → (col, row)
-    cell   → pixel: (col * CELL_SIZE + CELL_SIZE//2, row * CELL_SIZE + CELL_SIZE//2)
-
-Algorithm overview
-------------------
-A* finds the shortest path from *start_cell* to *goal_cell* using:
-    f(n) = g(n) + h(n)
-    g(n) = actual cost from start to n  (1 per cardinal step)
-    h(n) = heuristic estimate to goal   (Manhattan distance)
-
-The open set is a min-heap of (f, g, cell) tuples.
-The closed set is a Python set of already-expanded cells.
-
-Return value: list of (col, row) tuples from start to goal (inclusive),
-              or an empty list [] if no path exists.
-"""
 
 from __future__ import annotations
 import heapq

@@ -203,20 +203,30 @@ class InventoryOverlay:
                        and not supplier_kind)
 
         if plant_kind or supplier_kind:
-            # Plant — matured (last) growth stage so the player can tell
-            # species apart at a glance.
-            # Supplier — same matured sprite, since a harvested supplier
-            # IS visually the ripe crop the player just picked.
-            sprite_id = (item_id if plant_kind
-                         else C.SUPPLIER_TO_PLANT.get(item_id, ""))
-            stages = Assets._plant_frames.get(sprite_id, [])
-            if stages:
-                sprite = stages[-1]
+            # Plant   — matured (last) growth stage so the player can tell
+            #           species apart at a glance.
+            # Supplier — dedicated harvested-product sprite from
+            #           assets/Environment/Farm/Supplier/.  Falls back to
+            #           the matured plant sprite if the supplier asset is
+            #           missing, then to a coloured square.
+            sprite: pygame.Surface | None = None
+            if supplier_kind:
+                sprite = Assets._supplier_sprite.get(item_id)
+                if sprite is None:
+                    fallback_id = C.SUPPLIER_TO_PLANT.get(item_id, "")
+                    stages = Assets._plant_frames.get(fallback_id, [])
+                    sprite = stages[-1] if stages else None
+            else:
+                stages = Assets._plant_frames.get(item_id, [])
+                sprite = stages[-1] if stages else None
+
+            if sprite is not None:
                 sw, sh = sprite.get_size()
                 scale = min(slot_px / max(1, sw), slot_px / max(1, sh), 1.4)
                 tw = max(1, int(sw * scale))
                 th = max(1, int(sh * scale))
-                icon = pygame.transform.scale(sprite, (tw, th)) if (tw, th) != (sw, sh) else sprite
+                icon = (pygame.transform.scale(sprite, (tw, th))
+                        if (tw, th) != (sw, sh) else sprite)
                 s.blit(icon, (inner.centerx - tw // 2,
                               inner.centery - th // 2))
             else:

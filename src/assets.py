@@ -256,6 +256,10 @@ class Assets:
             th = max(1, int(h * scale))
             cls._supplier_sprite[sid] = pygame.transform.smoothscale(base, (tw, th))
 
+        # NOTE: Farm decorations reuse the main-map helpers Assets.tree() /
+        # rock() / mushroom() so they render at the same scale and visual
+        # style.  No extra preload pass needed here.
+
         # Boss animations — each boss has multiple states.  Sheets are pure
         # horizontal grids where the frame width equals the sheet height
         # (square frames), so we slice by `frame_w = h, count = w // h`.

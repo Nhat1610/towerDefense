@@ -315,7 +315,7 @@ class MapRenderer:
             vis_range = radius * 1.6
             if dist > vis_range:
                 return
-            if label == "Safe zone — HP regen": hero.healing()
+            if label == "Safe zone — HP regen": hero.healing(castle)
             t = max(0.0, 1.0 - dist / vis_range)   # 0→1 as hero gets closer
             alpha = int(t * (160 if in_range else 80))
             color  = near_color if in_range else far_color
@@ -547,14 +547,14 @@ class MapRenderer:
             # Vector fallback (kept compact)
             pygame.draw.rect(s, C.SHOP_WALL, (x, y, w, h), border_radius=4)
 
-        # Sign above the shop
+        ''' Sign above the shop
         sign_rect = (x + 10, y - 50, w - 20, 22)
         pygame.draw.rect(s, C.SHOP_SIGN, sign_rect, border_radius=3)
         pygame.draw.rect(s, (160, 120, 40), sign_rect, 2, border_radius=3)
         if not hasattr(self, "_font_sm"):
             self._font_sm = pygame.font.SysFont("consolas", 13, bold=True)
-        lbl = self._font_sm.render("SHOP", True, (80, 40, 0))
-        s.blit(lbl, (x + w // 2 - lbl.get_width() // 2, y - 46))
+        #lbl = self._font_sm.render("SHOP", True, (80, 40, 0))
+        #s.blit(lbl, (x + w // 2 - lbl.get_width() // 2, y - 46))'''
 
     # ══════════════════════════════════════════════════════════════════════
     # Castle
@@ -1614,11 +1614,60 @@ class MapRenderer:
             pygame.draw.line(s, (80, 50, 30),
                              (c0 * cell, y), ((c0 + w) * cell, y), 1)
 
+        # Scatter trees / rocks / mushrooms around the soil for atmosphere.
+        self._draw_farm_decorations()
+
         # Friendly farm sign in the corner
         if not hasattr(self, "_font_med"):
             self._font_med = pygame.font.SysFont("consolas", 18, bold=True)
         title = self._font_med.render("FARM", True, (180, 230, 120))
         s.blit(title, (cell + 8, 12))
+
+    def _draw_farm_decorations(self) -> None:
+        """Sparse hand-placed trees / rocks / mushrooms around the soil plot.
+
+        Matches the main-map style (fixed spots, same sprite helpers and
+        scale) instead of a dense procedurally-scattered ring.  Spots are
+        chosen to sit in the grass strips around the soil and to clear the
+        back-portal door on the left edge.
+        """
+        # Trees — (foot_x, foot_y, tree_idx).  Sprite is anchored so its
+        # base sits at (cx, cy), same as main-map _draw_tree.  Soil plot
+        # occupies roughly x=144..816, y=192..576; portal door covers
+        # x=4..44, y=312..408.
+        tree_spots = [
+            ( 70, 175, 0), (210, 150, 2), (560, 140, 1),
+            (705, 175, 3), (905, 180, 0),
+            (920, 540, 4), ( 65, 240, 1),
+            (110, 670, 2), (270, 710, 3), (480, 715, 0),
+            (690, 705, 4), (905, 695, 1),
+        ]
+        for tx, ty, idx in tree_spots:
+            self._draw_tree(tx, ty, idx)
+
+        # Rocks — (cx, cy, idx); blit centred on (cx, cy).
+        rock_spots = [
+            (110, 470, 0), (845, 240, 2),
+            (400,  90, 1), (590, 660, 0),
+            ( 50, 590, 1),
+        ]
+        for rx, ry, idx in rock_spots:
+            rock = Assets.rock(idx)
+            if rock is None:
+                continue
+            rw, rh = rock.get_size()
+            self.screen.blit(rock, (rx - rw // 2, ry - rh // 2))
+
+        # Mushrooms — a few small accents to break up the grass.
+        mush_spots = [
+            (300, 115, 0), (760, 115, 1), (360, 695, 0),
+        ]
+        for mx, my, idx in mush_spots:
+            mush = Assets.mushroom(idx)
+            if mush is None:
+                continue
+            mw, mh = mush.get_size()
+            self.screen.blit(mush, (mx - mw // 2, my - mh // 2))
 
     def _draw_farm_portal_back(self) -> None:
         """Draw the portal that returns the hero to the main map."""

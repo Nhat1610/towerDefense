@@ -557,16 +557,16 @@ FISH_RATE_DECAY_AMOUNT  = 0.05   # -5% per decay tick if not fed
 FISH_RATE_DECAY_INTERVAL = 120.0 # seconds — every 2 minutes without feeding
 
 # Fish products that go into the inventory after a successful catch
-FISH_RARE_CHANCE        = 0.20   # chance of catching a rare fish vs common
-FISH_COMMON_PRICE       = 30     # gold when sold at shop
-FISH_RARE_PRICE         = 120
+FISH_RARE_CHANCE        = 0.40   # chance of catching a rare fish vs common
+FISH_COMMON_PRICE       = 40     # gold when sold at shop
+FISH_RARE_PRICE         = 150
 FISH_FOOD_COST          = 40     # gold to buy one fish food (unchanged)
 
 # Minigame layout (overlay shown over the world)
 FISHING_BAR_W           = 460
 FISHING_BAR_H           = 36
 FISHING_GREEN_WIDTHS    = (0.30, 0.18, 0.10)  # green zone fraction per round
-FISHING_SLIDER_SPEED    = 1.6   # full sweeps per second (constant)
+FISHING_SLIDER_SPEED    = 1.4   # full sweeps per second (constant)
 FISHING_HITS_REQUIRED   = 3
 FISHING_TIMEOUT         = 10.0  # seconds before fish escapes if player idles
 
@@ -726,9 +726,14 @@ POND_INTERACT_RANGE  = 95    # hero must be within this px to fish
 SHOP_INTERACT_RANGE  = 95    # hero must be within this px to buy/sell
 CASTLE_SAFE_RANGE    = 115   # hero regenerates HP inside the castle perimeter
 HERO_REGEN_RATE      = 5.0   # HP per second while inside castle safe zone
+# Hero may only heal at the castle if NEITHER hero NOR castle has been hit
+# within this many seconds. Heals as soon as EITHER timer crosses the
+# window — so during a peaceful day the heal kicks in immediately, while
+# under fire the player must disengage for 5s (or the castle must) first.
+HERO_HEAL_COMBAT_WINDOW = 5.0
 
 # ── Day / Night phase timing ───────────────────────────────────────────────
-DAY_DURATION       = 330.0   # seconds — 4 minutes preparation per day
+DAY_DURATION       = 270.0   # seconds — 4m30s minutes preparation per day
 ENEMY_HP_SCALE     = 0.25    # +25% HP per wave above 1 (multiplicative growth)
 ENEMY_HP_GROWTH    = "compound"  # "linear" → 1 + (w-1)*scale; "compound" → (1+scale)**(w-1)
 

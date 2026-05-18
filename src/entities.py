@@ -31,6 +31,10 @@ class Castle:
         self.max_hp: int = C.CASTLE_HP_MAX + self.upgrade_bonus()
         self.hp: int   = self.max_hp
         self._node = None  # linked-list node reference (set by game)
+        # Seconds since the castle last took damage.  Starts very high so
+        # the hero can heal immediately on a fresh game / load.  Used by
+        # Hero.healing() to gate regen during combat.
+        self._last_hit_t: float = 999.0
 
     @property
     def alive(self) -> bool:
@@ -38,6 +42,11 @@ class Castle:
 
     def take_damage(self, amount: int) -> None:
         self.hp = max(0, self.hp - amount)
+        self._last_hit_t = 0.0
+
+    def tick(self, dt: float) -> None:
+        """Advance per-frame timers (just the combat-hit timer for now)."""
+        self._last_hit_t += dt
 
     def scale_for_wave(self, wave: int) -> None:
         """Increase max HP each wave; also keep upgrade bonus baked in."""
@@ -761,11 +770,18 @@ class Hero:
         self.block_cd: float          = 0.0
         self.block_cd_max: float      = 0.0      # duration of latest cooldown
 
+        # Seconds since the hero last took damage.  Starts very high so
+        # the player can heal at the castle straight after spawn.
+        self._last_hit_t: float = 999.0
+
     # ── Update ────────────────────────────────────────────────────────────
 
     def update(self, dt: float, keys) -> None:
         if not self.alive:
             return
+
+        # Tick the post-hit cooldown that gates castle healing.
+        self._last_hit_t += dt
 
         # While blocking, freeze movement and sprint completely.
         if self.block_active:
@@ -908,6 +924,9 @@ class Hero:
     def take_damage(self, amount: float) -> None:
         if not self.alive:
             return
+        # Reset the heal-gate timer on every landed hit so the player must
+        # disengage before HP regen at the castle resumes.
+        self._last_hit_t = 0.0
         # Armor flat-reduces damage but a hit always lands for ≥ 1 hp
         net = max(1.0, float(amount) - float(self.armor))
         # Block absorbs a flat share of post-armor net dmg.  The raw post-armor
@@ -927,9 +946,23 @@ class Hero:
             if self.block_active:
                 self._end_block()
 
-    def healing(self):
-        if self.hp < self.max_hp:
-            self.hp += 2
+    def healing(self, castle=None) -> None:
+        """Regen one tick of HP at the castle.
+
+        Gated by a combat-cooldown window: only heals if EITHER the hero
+        OR the castle has been free of damage for HERO_HEAL_COMBAT_WINDOW
+        seconds.  During a peaceful day both timers are saturated, so
+        heal kicks in immediately; under attack the player must break
+        contact (or the castle must) for the full window first.
+        """
+        if self.hp >= self.max_hp:
+            return
+        window = C.HERO_HEAL_COMBAT_WINDOW
+        hero_safe   = self._last_hit_t >= window
+        castle_safe = (castle is None) or (castle._last_hit_t >= window)
+        if not (hero_safe or castle_safe):
+            return
+        self.hp += 0.5
 
     # ── Upgrades ──────────────────────────────────────────────────────────
 
