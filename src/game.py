@@ -14,6 +14,7 @@ from src.entities import (
     Castle, Enemy, Tower, Projectile, FishPond, Shop, Hero, Boss,
     create_tower,
 )
+from src.algorithms import EntityLinkedList
 from src.renderer import MapRenderer
 from src.hud import HUD
 from src.savegame import SaveManager, state_to_dict
@@ -54,8 +55,10 @@ class GameState:
         self.current_map: str = "main"   # "main" | "farm"
 
         self.towers:      list[Tower]      = []
-        self.enemies:     list[Enemy]      = []
-        self.projectiles: list[Projectile] = []
+        # Enemies & projectiles use EntityLinkedList (doubly-linked list)
+        # for O(1) append / removal — see src/algorithms/linked_list.py
+        self.enemies:     EntityLinkedList  = EntityLinkedList()
+        self.projectiles: EntityLinkedList  = EntityLinkedList()
 
         # Grid: grid[row][col] → "EMPTY" | "PATH" | "TOWER" | "BUILDING"
         self.grid: list[list[str]] = self._build_grid()
@@ -1569,9 +1572,10 @@ class Game:
 
     def _update_projectiles(self, dt: float) -> None:
         s = self.state
-        for p in list(s.projectiles):
+        for p in s.projectiles:
             p.update(dt, s.enemies)
-        s.projectiles = [p for p in s.projectiles if not p.dead]
+        # In-place removal — preserves the EntityLinkedList instance
+        s.projectiles.remove_if(lambda p: p.dead)
 
     # ══════════════════════════════════════════════════════════════════════
     # Draw

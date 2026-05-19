@@ -51,7 +51,7 @@ class EntityLinkedList:
             self._tail = self._tail.next
             self._tail.prev = curTail
         self._size += 1
-        
+        return newNode
 
     def prepend(self, data: Any) -> Node:
 
@@ -65,7 +65,7 @@ class EntityLinkedList:
             self._head = newNode
             self._head.next = curHead
         self._size += 1
-        
+        return newNode
 
     def remove_node(self, node: Node) -> None:
 
@@ -73,7 +73,7 @@ class EntityLinkedList:
             node.prev.next = node.next
         else:
             self._head = node.next
-        
+
         if node.next:
             node.next.prev = node.prev
         else:
@@ -81,19 +81,45 @@ class EntityLinkedList:
         node.prev = None
         node.next = None
         self._size -= 1
+
     def remove_data(self, data: Any) -> bool:
 
         for node in self._iter_nodes():
-            if node.data == data:
+            if node.data is data or node.data == data:
                 self.remove_node(node)
                 return True
         return False
 
-       
+    # ── Python-list-compatible helpers ─────────────────────────────────────
+
+    def remove(self, data: Any) -> None:
+        """Remove first occurrence of `data`. Raises ValueError if not found
+        (matches Python list semantics so `list.remove(x)` call sites work)."""
+        if not self.remove_data(data):
+            raise ValueError(f"{data!r} not in EntityLinkedList")
+
+    def extend(self, iterable) -> None:
+        """Append every item from `iterable` in order (matches list.extend)."""
+        for item in iterable:
+            self.append(item)
+
+    def remove_if(self, predicate) -> int:
+        """Remove every node whose data matches `predicate(data)`.
+        Returns the number of nodes removed. O(n) single pass."""
+        removed = 0
+        node = self._head
+        while node is not None:
+            nxt = node.next
+            if predicate(node.data):
+                self.remove_node(node)
+                removed += 1
+            node = nxt
+        return removed
+
     def clear(self) -> None:
         self._head = None
         self._tail = None
-        self._size = None
+        self._size = 0
 
     # ── Query ──────────────────────────────────────────────────────────────
 

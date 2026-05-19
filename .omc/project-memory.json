@@ -1,0 +1,106 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1779153606529,
+  "projectRoot": "/Users/nhat/Downloads/doan_it003/towerDefense",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "requirements.txt"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "pip",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": "snake_case",
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "assets",
+      "src"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "__pycache__": {
+      "path": "__pycache__",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1779153606514,
+      "keyFiles": [
+        "config.cpython-311.pyc",
+        "config.cpython-313.pyc",
+        "main.cpython-313.pyc"
+      ]
+    },
+    "assets": {
+      "path": "assets",
+      "purpose": "Static assets",
+      "fileCount": 0,
+      "lastAccessed": 1779153606514,
+      "keyFiles": []
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 17,
+      "lastAccessed": 1779153606515,
+      "keyFiles": [
+        "__init__.py",
+        "assets.py",
+        "audio.py",
+        "entities.py",
+        "farm.py"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src/game.py",
+      "accessCount": 6,
+      "lastAccessed": 1779153978807,
+      "type": "file"
+    },
+    {
+      "path": "src/entities.py",
+      "accessCount": 3,
+      "lastAccessed": 1779153984880,
+      "type": "file"
+    },
+    {
+      "path": "src/algorithms/linked_list.py",
+      "accessCount": 2,
+      "lastAccessed": 1779153919741,
+      "type": "file"
+    },
+    {
+      "path": "src/algorithms/__init__.py",
+      "accessCount": 1,
+      "lastAccessed": 1779153694471,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}
